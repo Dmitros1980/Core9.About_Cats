@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static java.lang.Integer.*;
+import static jdk.internal.net.http.common.Utils.close;
 
 
 public class Main {
@@ -21,22 +22,29 @@ public class Main {
     public static final ObjectMapper mapper = new ObjectMapper();
 
     public static void main(String[] args) throws IOException {
-        CloseableHttpClient httpClient = HttpClientBuilder.create()
-                .setUserAgent("My Test Service")
-                .setDefaultRequestConfig(RequestConfig.custom()
-                        .setConnectTimeout(5000)
-                        .setSocketTimeout(30000)
-                        .setRedirectsEnabled(false)
-                        .build())
-                .build();
-        HttpGet request = new HttpGet(REMOTE_SERVICE_URI);
-        request.setHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
-        CloseableHttpResponse response = httpClient.execute(request);
-        Arrays.stream(response.getAllHeaders()).forEach(System.out::println);
+        CloseableHttpResponse response = null;
+        try {
+            CloseableHttpClient httpClient = HttpClientBuilder.create()
+                    .setUserAgent("My Test Service")
+                    .setDefaultRequestConfig(RequestConfig.custom()
+                            .setConnectTimeout(5000)
+                            .setSocketTimeout(30000)
+                            .setRedirectsEnabled(false)
+                            .build())
+                    .build();
+
+            HttpGet request = new HttpGet(REMOTE_SERVICE_URI);
+            request.setHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
+            response = httpClient.execute(request);
+            Arrays.stream(response.getAllHeaders()).forEach(System.out::println);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         List<Converter> converters = mapper.readValue(response.getEntity().getContent(),
                 new TypeReference<List<Converter>>() {
                 });
-        converters.stream().filter(value -> value.getUpvotes() != null && Integer.parseInt(value.getUpvotes()) > 0)
+
+        converters.stream().filter(value -> value.getUpvotes() > 0)
                 .forEach(System.out::println);
     }
 }
